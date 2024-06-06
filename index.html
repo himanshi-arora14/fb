@@ -1,23 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Facebook Login JavaScript Example</title>
-<meta charset="UTF-8">
+    <title>Facebook Login JavaScript Example</title>
+    <meta charset="UTF-8">
 </head>
 <body>
 <script>
-
   function statusChangeCallback(response) {  // Called with the results from FB.getLoginStatus().
     console.log('statusChangeCallback');
     console.log(response);                   // The current login status of the person.
     if (response.status === 'connected') {   // Logged into your webpage and Facebook.
-      testAPI();  
+      testAPI();
     } else {                                 // Not logged into your webpage or we are unable to tell.
       document.getElementById('status').innerHTML = 'Please log ' +
         'into this webpage.';
     }
   }
-
 
   function checkLoginState() {               // Called when a person is finished with the Login Button.
     FB.getLoginStatus(function(response) {   // See the onlogin handler
@@ -25,21 +23,19 @@
     });
   }
 
-
   window.fbAsyncInit = function() {
     FB.init({
-      appId      : '765586369096739',
-      cookie     : true,                     // Enable cookies to allow the server to access the session.
-      xfbml      : true,                     // Parse social plugins on this webpage.
-      version    : 'v20.0'           // Use this Graph API version for this call.
+      appId      : '765586369096739', // Replace with your Facebook App ID
+      cookie     : true,               // Enable cookies to allow the server to access the session.
+      xfbml      : true,               // Parse social plugins on this webpage.
+      version    : 'v20.0'             // Use this Graph API version for this call.
     });
-
 
     FB.getLoginStatus(function(response) {   // Called after the JS SDK has been initialized.
       statusChangeCallback(response);        // Returns the login status.
     });
   };
- 
+
   function testAPI() {                      // Testing Graph API after login.  See statusChangeCallback() for when this call is made.
     console.log('Welcome!  Fetching your information.... ');
     FB.api('/me', function(response) {
@@ -49,16 +45,78 @@
     });
   }
 
+  function authenticate() {
+    FB.login(function(response) {
+      if (response.authResponse) {
+        tableau.password = response.authResponse.accessToken;
+        tableau.connectionName = "Facebook Data";
+        tableau.submit();
+      }
+    }, {scope: 'public_profile,email,user_likes'});
+  }
+
+  (function() {
+    var myConnector = tableau.makeConnector();
+
+    myConnector.init = function(initCallback) {
+      tableau.authType = tableau.authTypeEnum.custom;
+      initCallback();
+      if (tableau.phase == tableau.phaseEnum.interactivePhase) {
+        // Display the login button
+        document.getElementById("login").style.display = "block";
+      }
+    };
+
+    myConnector.getSchema = function(schemaCallback) {
+      var cols = [{
+        id: "id",
+        dataType: tableau.dataTypeEnum.string
+      }, {
+        id: "name",
+        dataType: tableau.dataTypeEnum.string
+      }, {
+        id: "likes",
+        dataType: tableau.dataTypeEnum.int
+      }];
+
+      var tableSchema = {
+        id: "facebookData",
+        alias: "Facebook Data",
+        columns: cols
+      };
+
+      schemaCallback([tableSchema]);
+    };
+
+    myConnector.getData = function(table, doneCallback) {
+      var accessToken = tableau.password;
+
+      $.getJSON('https://graph.facebook.com/v11.0/me?fields=id,name,likes&access_token=' + accessToken, function(resp) {
+        var tableData = [];
+
+        tableData.push({
+          "id": resp.id,
+          "name": resp.name,
+          "likes": resp.likes
+        });
+
+        table.appendRows(tableData);
+        doneCallback();
+      });
+    };
+
+    tableau.registerConnector(myConnector);
+  })();
 </script>
 
-
 <!-- The JS SDK Login Button -->
-
 <fb:login-button scope="public_profile,email" onlogin="checkLoginState();">
 </fb:login-button>
 
-<div id="status">
-</div>
+<!-- Custom login button for WDC -->
+<button id="login" style="display:none" onclick="authenticate()">Log in with Facebook for Tableau</button>
+
+<div id="status"></div>
 
 <!-- Load the JS SDK asynchronously -->
 <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
