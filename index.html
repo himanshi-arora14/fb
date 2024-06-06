@@ -91,7 +91,7 @@
     myConnector.getData = function(table, doneCallback) {
       var accessToken = tableau.password;
 
-      $.getJSON('https://graph.facebook.com/v11.0/me?fields=id,name,likes&access_token=' + accessToken, function(resp) {
+      $.getJSON('https://graph.facebook.com/v20.0/me?fields=id,name,likes&access_token=' + accessToken, function(resp) {
         var tableData = [];
 
         tableData.push({
